@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ricerca Vini</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #controls {
+            margin-bottom: 20px;
+        }
+
+        .result {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .result:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        mark {
+            background-color: yellow;
+            font-weight: bold;
+        }
+
+        #loadMoreContainer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #loadMoreButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #loadMoreButton:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ricerca Vini</h1>
+
+    <!-- Barra di ricerca e opzioni di ordinamento -->
+    <div id="controls">
+        <input type="text" id="searchInput" placeholder="Cerca per Nome del Vino, Regione, Cantina..." style="width: 100%; padding: 10px; margin-bottom: 10px;">
+        <select id="sortResults" style="width: 100%; padding: 10px;">
+            <option value="">Ordina per...</option>
+            <option value="Nome del vino">Nome del Vino</option>
+            <option value="Regione">Regione</option>
+            <option value="Cantina">Cantina</option>
+        </select>
+    </div>
+
+    <!-- Contenitore dei risultati -->
+    <div id="results"></div>
+
+    <!-- Pulsante Carica più risultati -->
+    <div id="loadMoreContainer">
+        <button id="loadMoreButton" style="display: none;">Carica più risultati</button>
+    </div>
+
+    <script>
+        const API_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=vmK0i3tLtKSe3OtJF2SbgjxOjYKQMhZUvtTPSeFyfJ-9NcJKL0WFp66--4mE3UWSN_bwwN7Wjre79JwW0mgc4UHXjxcw0l8em5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnPKnqGUJmXX4P9PcxXts3M6_BLPIdYpMrtnmSI3IkQQPdm3t7mTMrSSt4sSIpF5YvUbqip8wZ_dOFmKdtQAKCGQeqaQctxuIBdz9Jw9Md8uu&lib=MrXF0btYR96UJnH4S95BcFDk9mIQiRL2A";
+
+        let currentPage = 1;
+        const resultsPerPage = 5;
+
+        document.getElementById('searchInput').addEventListener('input', fetchAndDisplayResults);
+        document.getElementById('sortResults').addEventListener('change', fetchAndDisplayResults);
+
+        async function fetchAndDisplayResults() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const sortField = document.getElementById('sortResults').value;
+
+            try {
+                console.log("Eseguo richiesta all'API...");
+                const response = await fetch(API_URL);
+                const data = await response.json();
+
+                console.log("Dati restituiti dall'API:", data);
+
+                // Riformatta i dati usando le intestazioni come chiavi
+                const formattedData = data.slice(1).map(row => {
+                    return data[0].reduce((acc, key, index) => {
+                        acc[key] = row[index];
+                        return acc;
+                    }, {});
+                });
+
+                console.log("Dati formattati:", formattedData);
+
+                // Filtra i risultati cercando la query in tutti i campi
+                let filteredResults = formattedData.filter(item => {
+                    return Object.values(item).some(value =>
+                        value && value.toString().toLowerCase().includes(query)
+                    );
+                });
+
+                // Ordina i risultati, se necessario
+                if (sortField) {
+                    filteredResults.sort((a, b) => {
+                        if (a[sortField] < b[sortField]) return -1;
+                        if (a[sortField] > b[sortField]) return 1;
+                        return 0;
+                    });
+                }
+
+                console.log("Risultati filtrati e ordinati:", filteredResults);
+
+                displayResults(filteredResults);
+            } catch (error) {
+                console.error("Errore nell'API:", error);
+                document.getElementById('results').innerHTML = "<p>Errore nel caricamento dei dati.</p>";
+            }
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+
+            const paginatedResults = results.slice(0, currentPage * resultsPerPage);
+
+            paginatedResults.forEach(item => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'result';
+                resultDiv.innerHTML = `
+                    <div class="card">
+                        <h3>${item["Nome del vino"] || "N/A"}</h3>
+                        <p><strong>Cantina:</strong> ${item["Cantina"] || "N/A"}</p>
+                        <p><strong>Regione:</strong> ${item["Regione"] || "N/A"}</p>
+                        <p><strong>Uvaggio:</strong> ${item["Uvaggio"] || "N/A"}</p>
+                        <p><strong>Tipologia:</strong> ${item["Tipologia"] || "N/A"}</p>
+                        <p><strong>Descrizione sensoriale:</strong> ${item["Descrizione sensoriale"] || "N/A"}</p>
+                    </div>
+                `;
+                resultsContainer.appendChild(resultDiv);
+            });
+
+            const loadMoreButton = document.getElementById('loadMoreButton');
+            if (results.length > currentPage * resultsPerPage) {
+                loadMoreButton.style.display = 'block';
+                loadMoreButton.onclick = () => {
+                    currentPage++;
+                    displayResults(results);
+                };
+            } else {
+                loadMoreButton.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
