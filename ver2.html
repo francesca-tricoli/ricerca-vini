@@ -21,7 +21,6 @@
             margin: 10px 0;
             background-color: #f9f9f9;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-            cursor: pointer;
         }
 
         .result:hover {
@@ -29,100 +28,60 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
+        .details-toggle {
+            color: #007bff;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .details-toggle:hover {
+            text-decoration: underline;
+        }
+
         .result-details {
             display: none;
             margin-top: 10px;
             font-size: 14px;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
         }
 
         .result-details.visible {
             display: block;
-        }
-
-        mark {
-            background-color: yellow;
-            font-weight: bold;
-        }
-
-        #loadMoreContainer {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        #loadMoreButton {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        #loadMoreButton:hover {
-            background-color: #0056b3;
         }
     </style>
 </head>
 <body>
     <h1>Ricerca Vini</h1>
 
-    <!-- Barra di ricerca e opzioni di ordinamento -->
+    <!-- Barra di ricerca -->
     <div id="controls">
         <input type="text" id="searchInput" placeholder="Cerca per Nome del Vino, Regione, Cantina..." style="width: 100%; padding: 10px; margin-bottom: 10px;">
-        <select id="sortResults" style="width: 100%; padding: 10px;">
-            <option value="">Ordina per...</option>
-            <option value="Nome del vino">Nome del Vino</option>
-            <option value="Regione">Regione</option>
-            <option value="Cantina">Cantina</option>
-        </select>
     </div>
 
     <!-- Contenitore dei risultati -->
     <div id="results"></div>
 
-    <!-- Pulsante Carica più risultati -->
-    <div id="loadMoreContainer">
-        <button id="loadMoreButton" style="display: none;">Carica più risultati</button>
-    </div>
-
     <script>
-        const API_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=vmK0i3tLtKSe3OtJF2SbgjxOjYKQMhZUvtTPSeFyfJ-9NcJKL0WFp66--4mE3UWSN_bwwN7Wjre79JwW0mgc4UHXjxcw0l8em5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnPKnqGUJmXX4P9PcxXts3M6_BLPIdYpMrtnmSI3IkQQPdm3t7mTMrSSt4sSIpF5YvUbqip8wZ_dOFmKdtQAKCGQeqaQctxuIBdz9Jw9Md8uu&lib=MrXF0btYR96UJnH4S95BcFDk9mIQiRL2A";
-
-        let currentPage = 1;
-        const resultsPerPage = 5;
+        const API_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=YOUR_API_KEY&lib=YOUR_API_LIBRARY";
 
         document.getElementById('searchInput').addEventListener('input', fetchAndDisplayResults);
-        document.getElementById('sortResults').addEventListener('change', fetchAndDisplayResults);
 
         async function fetchAndDisplayResults() {
             const query = document.getElementById('searchInput').value.toLowerCase().trim();
-            const sortField = document.getElementById('sortResults').value;
 
             try {
                 const response = await fetch(API_URL);
                 const data = await response.json();
 
-                const formattedData = data.slice(1).map(row => {
-                    return data[0].reduce((acc, key, index) => {
-                        acc[key] = row[index];
-                        return acc;
-                    }, {});
-                });
-
-                let filteredResults = formattedData.filter(item => {
+                // Filtra i risultati in base alla query
+                const filteredResults = data.filter(item => {
                     return Object.values(item).some(value =>
                         value && value.toString().toLowerCase().includes(query)
                     );
                 });
-
-                if (sortField) {
-                    filteredResults.sort((a, b) => {
-                        if (a[sortField] < b[sortField]) return -1;
-                        if (a[sortField] > b[sortField]) return 1;
-                        return 0;
-                    });
-                }
 
                 displayResults(filteredResults);
             } catch (error) {
@@ -135,9 +94,7 @@
             const resultsContainer = document.getElementById('results');
             resultsContainer.innerHTML = '';
 
-            const paginatedResults = results.slice(0, currentPage * resultsPerPage);
-
-            paginatedResults.forEach(item => {
+            results.forEach(item => {
                 const resultDiv = document.createElement('div');
                 resultDiv.className = 'result';
 
@@ -145,32 +102,27 @@
                     <strong>Nome:</strong> ${item["Nome del vino"] || "N/A"}<br>
                     <strong>Cantina:</strong> ${item["Cantina"] || "N/A"}<br>
                     <strong>Regione:</strong> ${item["Regione"] || "N/A"}<br>
+                    <strong>Uvaggio:</strong> ${item["Uvaggio"] || "N/A"}<br>
+                    <strong>Tipologia:</strong> ${item["Tipologia"] || "N/A"}<br>
+                    <span class="details-toggle">Mostra dettagli</span>
                     <div class="result-details">
-                        <strong>Uvaggio:</strong> ${item["Uvaggio"] || "N/A"}<br>
-                        <strong>Tipologia:</strong> ${item["Tipologia"] || "N/A"}<br>
+                        <strong>Stile:</strong> ${item["Stile"] || "N/A"}<br>
+                        <strong>Metodo di vinificazione:</strong> ${item["Metodo di vinificazione"] || "N/A"}<br>
                         <strong>Descrizione sensoriale:</strong> ${item["Descrizione sensoriale"] || "N/A"}<br>
+                        <strong>Struttura:</strong> ${item["Struttura"] || "N/A"}<br>
                         <strong>Gradazione alcolica:</strong> ${item["Gradazione alcolica"] || "N/A"}<br>
                     </div>
                 `;
 
-                resultDiv.addEventListener('click', () => {
+                // Aggiungi evento per mostrare/nascondere i dettagli
+                resultDiv.querySelector('.details-toggle').addEventListener('click', () => {
                     const detailsDiv = resultDiv.querySelector('.result-details');
-                    detailsDiv.classList.toggle('visible');
+                    const isVisible = detailsDiv.classList.toggle('visible');
+                    resultDiv.querySelector('.details-toggle').innerText = isVisible ? 'Nascondi dettagli' : 'Mostra dettagli';
                 });
 
                 resultsContainer.appendChild(resultDiv);
             });
-
-            const loadMoreButton = document.getElementById('loadMoreButton');
-            if (results.length > currentPage * resultsPerPage) {
-                loadMoreButton.style.display = 'block';
-                loadMoreButton.onclick = () => {
-                    currentPage++;
-                    displayResults(results);
-                };
-            } else {
-                loadMoreButton.style.display = 'none';
-            }
         }
     </script>
 </body>
