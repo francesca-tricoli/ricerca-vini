@@ -47,15 +47,33 @@
         .details-toggle:hover {
             color: #0056b3;
         }
+
+        #loadMoreContainer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #loadMoreButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #loadMoreButton:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
-    <h1>Ricerca Vini</h1>
-    
     <nav>
         <a href="index.html">Home</a> |
         <a href="ver2.html">Ricerca due</a>
     </nav>
+    <h1>Ricerca Vini</h1>
 
     <!-- Barra di ricerca -->
     <div id="controls">
@@ -65,17 +83,21 @@
     <!-- Contenitore dei risultati -->
     <div id="results"></div>
 
+    <!-- Pulsante Carica più risultati -->
+    <div id="loadMoreContainer">
+        <button id="loadMoreButton" style="display: none;">Carica più risultati</button>
+    </div>
+
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbzFaYkRPG8MSs9a8eT3r3w98uLAYt-ewDuIljGbGtCq7vXAGunjRO7nOaf2MdhCGaxMcA/exec";
+        const API_URL = "https://script.google.com/macros/s/YOUR_API_KEY/exec";
         let cachedData = []; // Memorizza i dati caricati dall'API
+        let currentPage = 1;
+        const resultsPerPage = 5;
 
         document.getElementById('searchInput').addEventListener('input', fetchAndDisplayResults);
 
         async function fetchAndDisplayResults() {
             const query = document.getElementById('searchInput').value.toLowerCase().trim();
-
-            // Divide la query in parole chiave separate da virgole
-            const keywords = query.split(',').map(keyword => keyword.trim()).filter(keyword => keyword.length > 0);
 
             try {
                 // Carica i dati dall'API solo se non sono già in cache
@@ -92,23 +114,18 @@
                         }, {});
                     });
                     console.log("Dati salvati in cache:", cachedData);
-                } else {
-                    console.log("Utilizzo dati dalla cache...");
                 }
 
-                // Filtra i risultati basandosi su corrispondenza parziale (almeno 50% delle parole chiave devono corrispondere)
-                const filteredResults = cachedData.filter(item => {
-                    let matchCount = 0;
-                    keywords.forEach(keyword => {
-                        if (Object.values(item).some(value => value.toString().toLowerCase().includes(keyword))) {
-                            matchCount++;
-                        }
-                    });
-                    return matchCount >= Math.ceil(keywords.length / 2); // Corrispondenza >= 50%
-                });
+                // Filtra i risultati
+                const filteredResults = cachedData.filter(item =>
+                    Object.values(item).some(value =>
+                        value.toString().toLowerCase().includes(query)
+                    )
+                );
 
                 console.log("Risultati filtrati:", filteredResults);
 
+                currentPage = 1; // Resetta la paginazione per una nuova ricerca
                 displayResults(filteredResults);
             } catch (error) {
                 console.error("Errore nell'API:", error);
@@ -120,7 +137,9 @@
             const resultsContainer = document.getElementById('results');
             resultsContainer.innerHTML = '';
 
-            results.forEach(item => {
+            const paginatedResults = results.slice(0, currentPage * resultsPerPage);
+
+            paginatedResults.forEach(item => {
                 const resultDiv = document.createElement('div');
                 resultDiv.className = 'result';
 
@@ -132,7 +151,6 @@
                     <strong>Tipologia:</strong> ${item["Tipologia"] || "N/A"}<br>
                     <span class="details-toggle">Mostra dettagli</span>
                     <div class="result-details">
-                        <strong>Stile:</strong> ${item["Stile"] || "N/A"}<br>
                         <strong>Metodo di vinificazione:</strong> ${item["Metodo di vinificazione"] || "N/A"}<br>
                         <strong>Descrizione sensoriale:</strong> ${item["Descrizione sensoriale"] || "N/A"}<br>
                         <strong>Struttura:</strong> ${item["Struttura"] || "N/A"}<br>
@@ -141,15 +159,25 @@
                 `;
 
                 // Aggiungi il comportamento "mostra/nascondi dettagli"
-                resultDiv.querySelector('.details-toggle').addEventListener('click', () => {
-                    const detailsDiv = resultDiv.querySelector('.result-details');
-                    const isVisible = detailsDiv.style.display === 'block';
-                    detailsDiv.style.display = isVisible ? 'none' : 'block';
-                    resultDiv.querySelector('.details-toggle').innerText = isVisible ? 'Mostra dettagli' : 'Nascondi dettagli';
+                resultDiv.querySelector('.details-toggle').addEventListener('click', function () {
+                    const detailsDiv = this.nextElementSibling;
+                    detailsDiv.style.display = detailsDiv.style.display === 'block' ? 'none' : 'block';
+                    this.innerText = detailsDiv.style.display === 'block' ? 'Nascondi dettagli' : 'Mostra dettagli';
                 });
 
                 resultsContainer.appendChild(resultDiv);
             });
+
+            const loadMoreButton = document.getElementById('loadMoreButton');
+            if (results.length > currentPage * resultsPerPage) {
+                loadMoreButton.style.display = 'block';
+                loadMoreButton.onclick = () => {
+                    currentPage++;
+                    displayResults(results);
+                };
+            } else {
+                loadMoreButton.style.display = 'none';
+            }
         }
     </script>
 </body>
