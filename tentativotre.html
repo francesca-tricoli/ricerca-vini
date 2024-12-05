@@ -1,1 +1,152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ricerca Vini</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #controls {
+            margin-bottom: 20px;
+        }
+
+        .result {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            background-color: #f9f9f9;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .result:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .result-details {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        .details-toggle {
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: underline;
+            display: block;
+            margin-top: 10px;
+        }
+
+        .details-toggle:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ricerca Vini</h1>
+
+    <!-- Barra di ricerca -->
+    <div id="controls">
+        <input type="text" id="searchInput" placeholder="Cerca per Nome del Vino, Regione, Cantina... (es. rosso, strutturato)" style="width: 100%; padding: 10px;">
+    </div>
+
+    <!-- Contenitore dei risultati -->
+    <div id="results"></div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbzFaYkRPG8MSs9a8eT3r3w98uLAYt-ewDuIljGbGtCq7vXAGunjRO7nOaf2MdhCGaxMcA/exec";
+        let cachedData = []; // Memorizza i dati caricati dall'API
+
+        document.getElementById('searchInput').addEventListener('input', fetchAndDisplayResults);
+
+        async function fetchAndDisplayResults() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+
+            // Divide la query in parole chiave separate da virgole
+            const keywords = query.split(',').map(keyword => keyword.trim()).filter(keyword => keyword.length > 0);
+
+            try {
+                // Carica i dati dall'API solo se non sono già in cache
+                if (cachedData.length === 0) {
+                    console.log("Caricamento dati dall'API...");
+                    const response = await fetch(API_URL);
+                    const data = await response.json();
+
+                    // Trasforma l'array di array in un array di oggetti
+                    cachedData = data.slice(1).map(row => {
+                        return data[0].reduce((acc, key, index) => {
+                            acc[key] = row[index] || "N/A";
+                            return acc;
+                        }, {});
+                    });
+                    console.log("Dati salvati in cache:", cachedData);
+                } else {
+                    console.log("Utilizzo dati dalla cache...");
+                }
+
+                // Filtra i risultati basandosi su corrispondenza parziale (almeno 50% delle parole chiave devono corrispondere)
+                const filteredResults = cachedData.filter(item => {
+                    let matchCount = 0;
+                    keywords.forEach(keyword => {
+                        if (Object.values(item).some(value => value.toString().toLowerCase().includes(keyword))) {
+                            matchCount++;
+                        }
+                    });
+                    return matchCount >= Math.ceil(keywords.length / 2); // Corrispondenza >= 50%
+                });
+
+                console.log("Risultati filtrati:", filteredResults);
+
+                displayResults(filteredResults);
+            } catch (error) {
+                console.error("Errore nell'API:", error);
+                document.getElementById('results').innerHTML = "<p>Errore nel caricamento dei dati.</p>";
+            }
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+
+            results.forEach(item => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'result';
+
+                resultDiv.innerHTML = `
+                    <strong>Nome:</strong> ${item["Nome del vino"] || "N/A"}<br>
+                    <strong>Cantina:</strong> ${item["Cantina"] || "N/A"}<br>
+                    <strong>Regione:</strong> ${item["Regione"] || "N/A"}<br>
+                    <strong>Uvaggio:</strong> ${item["Uvaggio"] || "N/A"}<br>
+                    <strong>Tipologia:</strong> ${item["Tipologia"] || "N/A"}<br>
+                    <span class="details-toggle">Mostra dettagli</span>
+                    <div class="result-details">
+                        <strong>Stile:</strong> ${item["Stile"] || "N/A"}<br>
+                        <strong>Metodo di vinificazione:</strong> ${item["Metodo di vinificazione"] || "N/A"}<br>
+                        <strong>Descrizione sensoriale:</strong> ${item["Descrizione sensoriale"] || "N/A"}<br>
+                        <strong>Struttura:</strong> ${item["Struttura"] || "N/A"}<br>
+                        <strong>Gradazione alcolica:</strong> ${item["Gradazione alcolica"] || "N/A"}<br>
+                    </div>
+                `;
+
+                // Aggiungi il comportamento "mostra/nascondi dettagli"
+                resultDiv.querySelector('.details-toggle').addEventListener('click', () => {
+                    const detailsDiv = resultDiv.querySelector('.result-details');
+                    const isVisible = detailsDiv.style.display === 'block';
+                    detailsDiv.style.display = isVisible ? 'none' : 'block';
+                    resultDiv.querySelector('.details-toggle').innerText = isVisible ? 'Mostra dettagli' : 'Nascondi dettagli';
+                });
+
+                resultsContainer.appendChild(resultDiv);
+            });
+        }
+    </script>
+</body>
+</html>
 
