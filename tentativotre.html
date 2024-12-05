@@ -77,7 +77,7 @@
 
     <!-- Barra di ricerca -->
     <div id="controls">
-        <input type="text" id="searchInput" placeholder="Cerca per Nome del Vino, Regione, Cantina... (es. rosso, strutturato)" style="width: 100%; padding: 10px;">
+        <input type="text" id="searchInput" placeholder="Cerca per Nome del Vino, Regione, Cantina..." style="width: 100%; padding: 10px;">
     </div>
 
     <!-- Contenitore dei risultati -->
@@ -106,9 +106,15 @@
                     const response = await fetch(API_URL);
                     const data = await response.json();
 
+                    // Controlla se l'API restituisce correttamente un array di array
+                    if (!Array.isArray(data) || data.length < 2) {
+                        throw new Error("Formato dati non valido dall'API");
+                    }
+
                     // Trasforma l'array di array in un array di oggetti
+                    const headers = data[0];
                     cachedData = data.slice(1).map(row => {
-                        return data[0].reduce((acc, key, index) => {
+                        return headers.reduce((acc, key, index) => {
                             acc[key] = row[index] || "N/A";
                             return acc;
                         }, {});
@@ -128,8 +134,8 @@
                 currentPage = 1; // Resetta la paginazione per una nuova ricerca
                 displayResults(filteredResults);
             } catch (error) {
-                console.error("Errore nell'API:", error);
-                document.getElementById('results').innerHTML = "<p>Errore nel caricamento dei dati.</p>";
+                console.error("Errore nel caricamento dei dati:", error);
+                document.getElementById('results').innerHTML = "<p>Errore nel caricamento dei dati. Assicurati che l'API restituisca un formato valido.</p>";
             }
         }
 
@@ -182,4 +188,3 @@
     </script>
 </body>
 </html>
-
