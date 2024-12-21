@@ -148,6 +148,9 @@
             const regionQuery = document.getElementById('regionInput').value.toLowerCase().trim();
             const descriptionQuery = document.getElementById('descriptionInput').value.toLowerCase().trim();
             const wineryQuery = document.getElementById('wineryInput').value.toLowerCase().trim(); // Nuovo campo per la cantina
+            const olfactoryQuery = document.getElementById('olfactoryInput').value.toLowerCase().trim();
+            const priceQuery = parseFloat(document.getElementById('priceInput').value.trim());
+
 
 
             try {
@@ -171,6 +174,9 @@
                     if (regionQuery && item["Regione"].toLowerCase().includes(regionQuery)) matches++;
                     if (descriptionQuery && item["Descrizione sensoriale"].toLowerCase().includes(descriptionQuery)) matches++;
                     if (wineryQuery && item["Cantina"].toLowerCase().includes(wineryQuery)) matches++;
+                    if (olfactoryQuery && item["Olfatto"].toLowerCase().includes(olfactoryQuery)) matches++;
+                    if (!isNaN(priceQuery) && parseFloat(item["Prezzo"]) <= priceQuery) matches++;
+
 
                     return { ...item, matchCount: matches };
                 }).filter(item => item.matchCount > 0);
