@@ -109,7 +109,7 @@
     </nav>
 
     <h1>Ricerca Vini</h1>
-<div></div>
+
     <!-- Search Controls -->
     <div id="controls">
         <input type="text" id="nameInput" placeholder="Nome del vino...">
@@ -118,9 +118,7 @@
         <input type="text" id="typeInput" placeholder="Tipo (fermo, frizzante...)">
         <input type="text" id="regionInput" placeholder="Regione (es. Toscana, Lazio...)">
         <input type="text" id="descriptionInput" placeholder="Descrizione (secco, medio, strutturato...)">
-        <!-- Campo per la descrizione olfattiva -->
         <input type="text" id="olfactoryInput" placeholder="Cerca per descrizione olfattiva">
-        <!-- Campo per il prezzo -->
         <input type="number" id="priceInput" placeholder="Cerca per prezzo massimo" step="0.01">
     </div>
 
@@ -147,22 +145,24 @@
             const typeQuery = document.getElementById('typeInput').value.toLowerCase().trim();
             const regionQuery = document.getElementById('regionInput').value.toLowerCase().trim();
             const descriptionQuery = document.getElementById('descriptionInput').value.toLowerCase().trim();
-            const wineryQuery = document.getElementById('wineryInput').value.toLowerCase().trim(); // Nuovo campo per la cantina
+            const wineryQuery = document.getElementById('wineryInput').value.toLowerCase().trim();
             const olfactoryQuery = document.getElementById('olfactoryInput').value.toLowerCase().trim();
             const priceQuery = parseFloat(document.getElementById('priceInput').value.trim());
-
-
 
             try {
                 if (cachedResults.length === 0) {
                     const response = await fetch(API_URL);
                     const data = await response.json();
-                    cachedResults = data.slice(1).map(row => {
-                        return data[0].reduce((acc, key, index) => {
-                            acc[key] = row[index] || "N/A";
-                            return acc;
-                        }, {});
-                    });
+
+                    // Transform array of arrays into array of objects
+                    if (data.length > 1) {
+                        cachedResults = data.slice(1).map(row => {
+                            return data[0].reduce((acc, key, index) => {
+                                acc[key] = row[index] || "N/A";
+                                return acc;
+                            }, {});
+                        });
+                    }
                 }
 
                 const filteredResults = cachedResults.map(item => {
@@ -176,7 +176,6 @@
                     if (wineryQuery && item["Cantina"].toLowerCase().includes(wineryQuery)) matches++;
                     if (olfactoryQuery && item["Olfatto"].toLowerCase().includes(olfactoryQuery)) matches++;
                     if (!isNaN(priceQuery) && parseFloat(item["Prezzo"]) <= priceQuery) matches++;
-
 
                     return { ...item, matchCount: matches };
                 }).filter(item => item.matchCount > 0);
@@ -204,6 +203,7 @@
                     <strong>Cantina:</strong> ${item["Cantina"] || "N/A"}<br>
                     <strong>Regione:</strong> ${item["Regione"] || "N/A"}<br>
                     <strong>Tipologia:</strong> ${item["Tipologia"] || "N/A"}<br>
+                    <strong>Olfatto:</strong> ${item["Olfatto"] || "N/A"}<br>
                     <span class="details-toggle">Mostra dettagli</span>
                     <div class="result-details">
                         <strong>Uvaggio:</strong> ${item["Uvaggio"] || "N/A"}<br>
