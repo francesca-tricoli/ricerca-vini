@@ -5,102 +5,182 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ricerca Vini</title>
     <style>
+        /* Palette colori tortora */
+        :root {
+            --background-color: #f4f4f4;
+            --primary-color: #6c5b5b;
+            --secondary-color: #a39193;
+            --highlight-color: #d8cbc4;
+            --text-color: #333333;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: "Arial", sans-serif;
             margin: 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
         }
 
         #controls {
             margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        #controls input {
+            flex: 1 1 calc(50% - 10px);
+            padding: 12px;
+            border: 1px solid var(--secondary-color);
+            border-radius: 5px;
+            background-color: var(--highlight-color);
+            color: var(--text-color);
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        #controls input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 5px var(--primary-color);
         }
 
         .result {
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            border: 1px solid var(--primary-color);
+            border-radius: 8px;
             padding: 15px;
             margin: 10px 0;
-            background-color: #f9f9f9;
+            background-color: var(--highlight-color);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .result:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
         .result-details {
             display: none;
             margin-top: 10px;
-            padding: 10px;
-            background-color: #f0f0f0;
+            padding: 15px;
+            background-color: var(--secondary-color);
             border-radius: 5px;
+            color: white;
         }
 
         .details-toggle {
-            color: #007bff;
+            color: var(--primary-color);
             cursor: pointer;
             text-decoration: underline;
             display: block;
             margin-top: 10px;
+            font-weight: bold;
         }
 
         .details-toggle:hover {
-            color: #0056b3;
+            color: var(--secondary-color);
+        }
+
+        #loadMoreContainer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #loadMoreButton {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #loadMoreButton:hover {
+            background-color: var(--secondary-color);
+        }
+
+        @media screen and (max-width: 768px) {
+            #controls input {
+                flex: 1 1 100%;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Ricerca Vini</h1>
     <nav>
-    <a href="index.html">Home</a> 
-    <a href="tentativotre.html">tentativo tre</a>
-</nav>
+        <a href="index.html" style="color: var(--primary-color);">Home</a> |
+        <a href="tentativoTre.html" style="color: var(--primary-color);">Tentativo Tre</a>
+    </nav>
 
-    <!-- Barra di ricerca -->
+    <h1>Ricerca Vini</h1>
+
+    <!-- Search Controls -->
     <div id="controls">
-        <input type="text" id="searchInput" placeholder="Cerca per Nome del Vino, Regione, Cantina... (es. rosso, strutturato)" style="width: 100%; padding: 10px;">
+        <input type="text" id="nameInput" placeholder="Nome del vino...">
+        <input type="text" id="wineryInput" placeholder="Cantina (es. Macciocca, Cascina...)">
+        <input type="text" id="colorInput" placeholder="Colore (es. Rosso, Bianco...)">
+        <input type="text" id="typeInput" placeholder="Tipo (fermo, frizzante...)">
+        <input type="text" id="regionInput" placeholder="Regione (es. Toscana, Lazio...)">
+        <input type="text" id="descriptionInput" placeholder="Descrizione (secco, medio, strutturato...)">
+        <input type="text" id="olfactoryInput" placeholder="Cerca per descrizione olfattiva">
+        <input type="number" id="priceInput" placeholder="Cerca per prezzo massimo" step="0.01">
     </div>
 
-    <!-- Contenitore dei risultati -->
+    <!-- Results -->
     <div id="results"></div>
+
+    <!-- Load More Button -->
+    <div id="loadMoreContainer">
+        <button id="loadMoreButton" style="display: none;">Carica altri risultati</button>
+    </div>
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbzFaYkRPG8MSs9a8eT3r3w98uLAYt-ewDuIljGbGtCq7vXAGunjRO7nOaf2MdhCGaxMcA/exec";
+        let cachedResults = [];
+        let currentPage = 1;
+        const resultsPerPage = 5;
 
-        document.getElementById('searchInput').addEventListener('input', fetchAndDisplayResults);
+        document.querySelectorAll('#controls input').forEach(input => input.addEventListener('input', fetchAndDisplayResults));
 
         async function fetchAndDisplayResults() {
-            const query = document.getElementById('searchInput').value.toLowerCase().trim();
-
-            // Divide la query in parole chiave separate da virgole
-            const keywords = query.split(',').map(keyword => keyword.trim()).filter(keyword => keyword.length > 0);
+            currentPage = 1; // Reset pagination
+            const nameQuery = document.getElementById('nameInput').value.toLowerCase().trim();
+            const colorQuery = document.getElementById('colorInput').value.toLowerCase().trim();
+            const typeQuery = document.getElementById('typeInput').value.toLowerCase().trim();
+            const regionQuery = document.getElementById('regionInput').value.toLowerCase().trim();
+            const descriptionQuery = document.getElementById('descriptionInput').value.toLowerCase().trim();
+            const wineryQuery = document.getElementById('wineryInput').value.toLowerCase().trim();
+            const olfactoryQuery = document.getElementById('olfactoryInput').value.toLowerCase().trim();
+            const priceQuery = parseFloat(document.getElementById('priceInput').value.trim());
 
             try {
-                const response = await fetch(API_URL);
-                const data = await response.json();
+                if (cachedResults.length === 0) {
+                    const response = await fetch(API_URL);
+                    const data = await response.json();
 
-                console.log("Dati restituiti dall'API (prima della formattazione):", data);
+                    // Transform array of arrays into array of objects
+                    if (data.length > 1) {
+                        cachedResults = data.slice(1).map(row => {
+                            return data[0].reduce((acc, key, index) => {
+                                acc[key] = row[index] || "N/A";
+                                return acc;
+                            }, {});
+                        });
+                    }
+                }
 
-                // Trasforma l'array di array in un array di oggetti
-                const formattedData = data.slice(1).map(row => {
-                    return data[0].reduce((acc, key, index) => {
-                        acc[key] = row[index] || "N/A";
-                        return acc;
-                    }, {});
-                });
+                const filteredResults = cachedResults.map(item => {
+                    let matches = 0;
 
-                console.log("Dati formattati:", formattedData);
+                    if (nameQuery && item["Nome del vino"].toLowerCase().includes(nameQuery)) matches++;
+                    if (colorQuery && item["Tipologia"].toLowerCase().includes(colorQuery)) matches++;
+                    if (typeQuery && item["Stile"].toLowerCase().includes(typeQuery)) matches++;
+                    if (regionQuery && item["Regione"].toLowerCase().includes(regionQuery)) matches++;
+                    if (descriptionQuery && item["Descrizione sensoriale"].toLowerCase().includes(descriptionQuery)) matches++;
+                    if (wineryQuery && item["Cantina"].toLowerCase().includes(wineryQuery)) matches++;
+                    if (olfactoryQuery && item["Olfatto"].toLowerCase().includes(olfactoryQuery)) matches++;
+                    if (!isNaN(priceQuery) && parseFloat(item["Prezzo"]) <= priceQuery) matches++;
 
-                // Filtra i risultati cercando che **tutte** le parole chiave siano presenti
-                const filteredResults = formattedData.filter(item =>
-                    keywords.every(keyword =>
-                        Object.values(item).some(value =>
-                            value.toString().toLowerCase().includes(keyword)
-                        )
-                    )
-                );
+                    return { ...item, matchCount: matches };
+                }).filter(item => item.matchCount > 0);
 
-                console.log("Risultati filtrati:", filteredResults);
+                filteredResults.sort((a, b) => b.matchCount - a.matchCount);
 
                 displayResults(filteredResults);
             } catch (error) {
@@ -113,18 +193,20 @@
             const resultsContainer = document.getElementById('results');
             resultsContainer.innerHTML = '';
 
-            results.forEach(item => {
+            const paginatedResults = results.slice(0, currentPage * resultsPerPage);
+
+            paginatedResults.forEach(item => {
                 const resultDiv = document.createElement('div');
                 resultDiv.className = 'result';
-
                 resultDiv.innerHTML = `
                     <strong>Nome:</strong> ${item["Nome del vino"] || "N/A"}<br>
                     <strong>Cantina:</strong> ${item["Cantina"] || "N/A"}<br>
                     <strong>Regione:</strong> ${item["Regione"] || "N/A"}<br>
-                    <strong>Uvaggio:</strong> ${item["Uvaggio"] || "N/A"}<br>
                     <strong>Tipologia:</strong> ${item["Tipologia"] || "N/A"}<br>
+                    <strong>Olfatto:</strong> ${item["Olfatto"] || "N/A"}<br>
                     <span class="details-toggle">Mostra dettagli</span>
                     <div class="result-details">
+                        <strong>Uvaggio:</strong> ${item["Uvaggio"] || "N/A"}<br>
                         <strong>Stile:</strong> ${item["Stile"] || "N/A"}<br>
                         <strong>Metodo di vinificazione:</strong> ${item["Metodo di vinificazione"] || "N/A"}<br>
                         <strong>Descrizione sensoriale:</strong> ${item["Descrizione sensoriale"] || "N/A"}<br>
@@ -133,7 +215,6 @@
                     </div>
                 `;
 
-                // Aggiungi il comportamento "mostra/nascondi dettagli"
                 resultDiv.querySelector('.details-toggle').addEventListener('click', () => {
                     const detailsDiv = resultDiv.querySelector('.result-details');
                     const isVisible = detailsDiv.style.display === 'block';
@@ -143,6 +224,17 @@
 
                 resultsContainer.appendChild(resultDiv);
             });
+
+            const loadMoreButton = document.getElementById('loadMoreButton');
+            if (results.length > currentPage * resultsPerPage) {
+                loadMoreButton.style.display = 'block';
+                loadMoreButton.onclick = () => {
+                    currentPage++;
+                    displayResults(results);
+                };
+            } else {
+                loadMoreButton.style.display = 'none';
+            }
         }
     </script>
 </body>
